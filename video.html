@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SMRITHIPATHA Videos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+            color: #fff8dc;
+            background:
+                radial-gradient(circle at 18% 10%, rgba(212, 175, 55, 0.18), transparent 30%),
+                radial-gradient(circle at 88% 16%, rgba(0, 187, 249, 0.13), transparent 28%),
+                linear-gradient(135deg, #09090d 0%, #171116 52%, #050507 100%);
+            padding: 22px;
+        }
+
+        .app {
+            width: min(1440px, 100%);
+            margin: 0 auto;
+            display: grid;
+            gap: 18px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+        }
+
+        .back-link,
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(212, 175, 55, 0.24);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #f7df8c;
+            padding: 10px 14px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        h1 {
+            font-size: clamp(25px, 4vw, 52px);
+            font-weight: 900;
+            letter-spacing: 0;
+            color: #ffeaa6;
+            text-shadow: 0 0 34px rgba(212, 175, 55, 0.28);
+            overflow-wrap: anywhere;
+        }
+
+        .stage {
+            position: relative;
+            width: min(980px, 100%);
+            aspect-ratio: 16 / 9;
+            margin: 0 auto;
+            border: 2px solid rgba(245, 214, 118, 0.72);
+            border-radius: 22px;
+            padding: 12px;
+            background:
+                linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+                #08080b;
+            box-shadow:
+                0 22px 58px rgba(0, 0, 0, 0.58),
+                0 0 0 6px rgba(212, 175, 55, 0.055),
+                inset 0 0 46px rgba(212, 175, 55, 0.045);
+            overflow: hidden;
+        }
+
+        .main-video {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+            border-radius: 14px;
+            background: #030305;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        body.has-selection .main-video {
+            opacity: 1;
+        }
+
+        .stage-empty {
+            position: absolute;
+            inset: 12px;
+            display: grid;
+            place-items: center;
+            text-align: center;
+            border-radius: 14px;
+            background:
+                linear-gradient(135deg, rgba(212, 175, 55, 0.12), rgba(255, 255, 255, 0.02)),
+                #0c0c10;
+            color: rgba(255, 248, 220, 0.8);
+            transition: opacity 0.25s ease, visibility 0.25s ease;
+        }
+
+        body.has-selection .stage-empty {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .stage-empty i {
+            display: block;
+            color: #f5d676;
+            font-size: 56px;
+            margin-bottom: 16px;
+        }
+
+        .stage-empty strong {
+            display: block;
+            font-size: clamp(28px, 5vw, 58px);
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+
+        .stage-empty span {
+            display: block;
+            font-size: 17px;
+            line-height: 1.45;
+            max-width: 560px;
+        }
+
+        .now-playing {
+            position: absolute;
+            left: 34px;
+            bottom: 34px;
+            display: none;
+            max-width: min(560px, calc(100% - 68px));
+            padding: 14px 16px;
+            border: 1px solid rgba(255, 234, 166, 0.2);
+            border-radius: 16px;
+            background: rgba(0, 0, 0, 0.66);
+            backdrop-filter: blur(10px);
+        }
+
+        body.has-selection .now-playing {
+            display: block;
+        }
+
+        .now-playing span {
+            display: block;
+            color: #f5d676;
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .now-playing strong {
+            display: block;
+            font-size: clamp(20px, 3vw, 34px);
+            line-height: 1.05;
+        }
+
+        .section-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .video-section {
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 12px;
+            min-height: 250px;
+            padding: 14px;
+            border: 1px solid rgba(255, 234, 166, 0.22);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.055);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+        }
+
+        .video-section.is-active {
+            border-color: rgba(245, 214, 118, 0.8);
+            box-shadow:
+                0 18px 48px rgba(212, 175, 55, 0.12),
+                inset 0 0 0 1px rgba(245, 214, 118, 0.18);
+        }
+
+        .thumb {
+            min-height: 126px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(255, 234, 166, 0.14);
+            background:
+                linear-gradient(135deg, rgba(212, 175, 55, 0.18), rgba(0, 187, 249, 0.08)),
+                #09090d;
+            color: #f5d676;
+            font-size: 38px;
+        }
+
+        .video-copy {
+            min-width: 0;
+        }
+
+        .video-copy h2 {
+            color: #fff3bc;
+            font-size: 20px;
+            line-height: 1.1;
+            margin-bottom: 8px;
+        }
+
+        .video-copy p {
+            color: rgba(255, 248, 220, 0.74);
+            font-size: 14px;
+            line-height: 1.42;
+        }
+
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-top: 12px;
+        }
+
+        .meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid rgba(255, 234, 166, 0.16);
+            border-radius: 999px;
+            padding: 6px 9px;
+            color: #f7df8c;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .play-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            min-height: 50px;
+            border: 0;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #ffeaa6, #d4af37);
+            color: #161007;
+            box-shadow: 0 16px 34px rgba(212, 175, 55, 0.22);
+            font-size: 14px;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .play-btn:disabled {
+            opacity: 0.72;
+            cursor: wait;
+        }
+
+        @media (max-width: 1100px) {
+            .section-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 680px) {
+            body {
+                padding: 14px;
+            }
+
+            .header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .brand {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .stage {
+                width: 100%;
+                aspect-ratio: 16 / 10;
+                padding: 12px;
+                border-radius: 20px;
+            }
+
+            .stage-empty {
+                inset: 12px;
+            }
+
+            .now-playing {
+                left: 22px;
+                right: 22px;
+                bottom: 22px;
+                max-width: none;
+            }
+
+            .section-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="app">
+        <header class="header">
+            <div class="brand">
+                <a class="back-link" href="index.html"><i class="fas fa-arrow-left"></i> Wheel</a>
+                <h1>SMRITHIPATHA</h1>
+            </div>
+            <div class="status-pill" id="syncStatus"><i class="fas fa-circle-notch fa-spin"></i> Connecting</div>
+        </header>
+
+        <section class="stage" aria-label="Selected video screen">
+            <video class="main-video" id="mainVideo" muted playsinline controls preload="metadata"></video>
+            <div class="stage-empty" id="stageEmpty">
+                <div>
+                    <i class="fas fa-circle-play"></i>
+                    <strong>Select A Video</strong>
+                    <span>Use any Play button below. Only that selected video will appear here on the big screen.</span>
+                </div>
+            </div>
+            <div class="now-playing" id="nowPlaying">
+                <span>Now Playing</span>
+                <strong id="nowTitle">Video</strong>
+            </div>
+        </section>
+
+        <section class="section-grid" id="videoList" aria-label="Video choices">
+            <article class="video-section" data-video-id="dance">
+                <div class="thumb"><i class="fas fa-music"></i></div>
+                <div class="video-copy">
+                    <h2>Dance Moment</h2>
+                    <p>A fun performance clip for the celebration screen.</p>
+                    <div class="meta">
+                        <span><i class="fas fa-file-video"></i> MP4</span>
+                        <span><i class="fas fa-display"></i> Big screen</span>
+                    </div>
+                </div>
+                <button class="play-btn" type="button" data-play-video="dance"><i class="fas fa-play"></i> Play</button>
+            </article>
+
+            <article class="video-section" data-video-id="dialog">
+                <div class="thumb"><i class="fas fa-comment-dots"></i></div>
+                <div class="video-copy">
+                    <h2>Dialog Clip</h2>
+                    <p>A short dialog video ready for shared playback.</p>
+                    <div class="meta">
+                        <span><i class="fas fa-file-video"></i> MP4</span>
+                        <span><i class="fas fa-users"></i> Live sync</span>
+                    </div>
+                </div>
+                <button class="play-btn" type="button" data-play-video="dialog"><i class="fas fa-play"></i> Play</button>
+            </article>
+
+            <article class="video-section" data-video-id="boys">
+                <div class="thumb"><i class="fas fa-user-group"></i></div>
+                <div class="video-copy">
+                    <h2>Boys Video</h2>
+                    <p>Group video section with its own play control.</p>
+                    <div class="meta">
+                        <span><i class="fas fa-file-video"></i> MP4</span>
+                        <span><i class="fas fa-video"></i> Single play</span>
+                    </div>
+                </div>
+                <button class="play-btn" type="button" data-play-video="boys"><i class="fas fa-play"></i> Play</button>
+            </article>
+
+            <article class="video-section" data-video-id="girls">
+                <div class="thumb"><i class="fas fa-star"></i></div>
+                <div class="video-copy">
+                    <h2>Girls Video</h2>
+                    <p>Featured video section for the big screen player.</p>
+                    <div class="meta">
+                        <span><i class="fas fa-file-video"></i> MP4</span>
+                        <span><i class="fas fa-bolt"></i> Instant</span>
+                    </div>
+                </div>
+                <button class="play-btn" type="button" data-play-video="girls"><i class="fas fa-play"></i> Play</button>
+            </article>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script>
+        (function() {
+            'use strict';
+
+            const videoItems = [
+                { id: 'dance', title: 'Dance Moment', src: 'gorilla dance.mp4' },
+                { id: 'dialog', title: 'Dialog Clip', src: 'dialog.mp4' },
+                { id: 'boys', title: 'Boys Video', src: 'boys.mp4' },
+                { id: 'girls', title: 'Girls Video', src: 'girls.mp4' }
+            ];
+
+            const config = window.FAREWELL_SUPABASE_CONFIG || {};
+            const client = window.supabase && config.url && config.anonKey
+                ? window.supabase.createClient(config.url, config.anonKey)
+                : null;
+            const mainVideo = document.getElementById('mainVideo');
+            const nowTitle = document.getElementById('nowTitle');
+            const syncStatus = document.getElementById('syncStatus');
+            const playButtons = Array.from(document.querySelectorAll('[data-play-video]'));
+            const videoSections = Array.from(document.querySelectorAll('[data-video-id]'));
+            const clientId = window.crypto?.randomUUID
+                ? window.crypto.randomUUID()
+                : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+            let lastPlaybackActionId = null;
+
+            function setStatus(icon, text) {
+                syncStatus.innerHTML = `<i class="fas ${icon}"></i> ${text}`;
+            }
+
+            function getVideoItem(videoId) {
+                return videoItems.find((item) => item.id === videoId) || null;
+            }
+
+            function setActiveSection(videoId) {
+                videoSections.forEach((section) => {
+                    section.classList.toggle('is-active', section.dataset.videoId === videoId);
+                });
+            }
+
+            function setWaiting() {
+                document.body.classList.remove('has-selection');
+                mainVideo.pause();
+                mainVideo.removeAttribute('src');
+                mainVideo.load();
+                nowTitle.textContent = 'Video';
+                setActiveSection('');
+                playButtons.forEach((button) => {
+                    button.disabled = false;
+                    button.innerHTML = '<i class="fas fa-play"></i> Play';
+                });
+            }
+
+            async function loadState() {
+                if (!client) return null;
+                const { data, error } = await client
+                    .from('wheel_state')
+                    .select('data')
+                    .eq('id', 'main')
+                    .maybeSingle();
+                if (error) {
+                    console.warn('Video state load failed:', error.message);
+                    return null;
+                }
+                return data?.data || null;
+            }
+
+            async function savePlaybackState(videoId, startedAt, actionId) {
+                if (!client) return;
+                const currentState = await loadState();
+                const nextData = {
+                    ...(currentState || {}),
+                    videoPlayback: {
+                        status: 'playing',
+                        videoId,
+                        startedAt,
+                        actionId,
+                        updatedAt: Date.now()
+                    },
+                    lastAction: {
+                        id: actionId,
+                        type: 'video-played',
+                        source: clientId,
+                        at: Date.now(),
+                        details: { videoId, startedAt }
+                    }
+                };
+                const { error } = await client.from('wheel_state').upsert({
+                    id: 'main',
+                    updated_at: new Date().toISOString(),
+                    data: nextData
+                }, { onConflict: 'id' });
+                if (error) throw error;
+            }
+
+            function syncVideoTime(startedAt) {
+                const elapsed = Math.max(0, (Date.now() - Number(startedAt || Date.now())) / 1000);
+                if (Number.isFinite(mainVideo.duration) && mainVideo.duration > 0) {
+                    mainVideo.currentTime = Math.min(elapsed, Math.max(0, mainVideo.duration - 0.15));
+                } else {
+                    mainVideo.currentTime = elapsed;
+                }
+            }
+
+            async function playSelected(playback) {
+                const item = getVideoItem(playback?.videoId);
+                if (!item || playback.status !== 'playing' || !playback.startedAt) return;
+                if (lastPlaybackActionId === playback.actionId) return;
+
+                lastPlaybackActionId = playback.actionId || `${playback.videoId}-${playback.startedAt}`;
+                playButtons.forEach((button) => {
+                    const isSelected = button.dataset.playVideo === item.id;
+                    button.disabled = true;
+                    button.innerHTML = isSelected
+                        ? '<i class="fas fa-circle-notch fa-spin"></i> Starting'
+                        : '<i class="fas fa-play"></i> Play';
+                });
+
+                mainVideo.pause();
+                if (!mainVideo.src.endsWith(encodeURI(item.src))) {
+                    mainVideo.src = item.src;
+                    mainVideo.load();
+                }
+                mainVideo.muted = true;
+                nowTitle.textContent = item.title;
+                setActiveSection(item.id);
+
+                const delay = Math.max(0, Number(playback.startedAt) - Date.now());
+                window.setTimeout(async () => {
+                    document.body.classList.add('has-selection');
+                    syncVideoTime(playback.startedAt);
+                    try {
+                        await mainVideo.play();
+                    } catch (error) {
+                        console.warn('Video play blocked:', error);
+                    }
+                    playButtons.forEach((button) => {
+                        button.disabled = false;
+                        button.innerHTML = button.dataset.playVideo === item.id
+                            ? '<i class="fas fa-rotate-right"></i> Replay'
+                            : '<i class="fas fa-play"></i> Play';
+                    });
+                    setStatus('fa-circle-check', 'Playing Live');
+                }, delay);
+            }
+
+            function applyState(state) {
+                const playback = state?.videoPlayback;
+                if (playback?.status === 'playing' && playback.videoId) {
+                    playSelected(playback);
+                    return;
+                }
+                setWaiting();
+                setStatus(client ? 'fa-circle-check' : 'fa-link-slash', client ? 'Waiting Live' : 'Offline');
+            }
+
+            async function handlePlayClick(event) {
+                const videoId = event.currentTarget.dataset.playVideo;
+                const item = getVideoItem(videoId);
+                if (!item) return;
+
+                const actionId = `${clientId}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                const startedAt = Date.now() + 700;
+                event.currentTarget.disabled = true;
+
+                if (client) {
+                    try {
+                        await savePlaybackState(videoId, startedAt, actionId);
+                    } catch (error) {
+                        console.warn('Video playback sync failed:', error);
+                    }
+                }
+
+                playSelected({ status: 'playing', videoId, startedAt, actionId });
+            }
+
+            async function init() {
+                playButtons.forEach((button) => {
+                    button.addEventListener('click', handlePlayClick);
+                });
+
+                mainVideo.addEventListener('ended', () => {
+                    setStatus('fa-circle-check', 'Finished');
+                });
+
+                if (!client) {
+                    setStatus('fa-link-slash', 'Offline');
+                    setWaiting();
+                    return;
+                }
+
+                applyState(await loadState());
+                client
+                    .channel('video-playback-live')
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: '*',
+                            schema: 'public',
+                            table: 'wheel_state',
+                            filter: 'id=eq.main'
+                        },
+                        (payload) => applyState(payload.new?.data || null)
+                    )
+                    .subscribe((status) => {
+                        if (status === 'SUBSCRIBED') {
+                            setStatus('fa-circle-check', 'Waiting Live');
+                        }
+                    });
+            }
+
+            init();
+        })();
+    </script>
+</body>
+</html>
