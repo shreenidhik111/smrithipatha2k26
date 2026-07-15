@@ -340,7 +340,10 @@
                     <span>Use any Play button below. Only that selected video will appear here on the big screen.</span>
                 </div>
             </div>
-            
+            <div class="now-playing" id="nowTitle">
+                <span>Now Playing</span>
+                <strong>Select a video</strong>
+            </div>
         </section>
 
         <section class="section-grid" id="videoList" aria-label="Video choices">
@@ -398,8 +401,6 @@
         </section>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js"></script>
     <script>
         (function() {
             'use strict';
@@ -411,19 +412,12 @@
                 { id: 'girls', title: 'Girls Video', src: 'girls.mp4' }
             ];
 
-            const config = window.FAREWELL_SUPABASE_CONFIG || {};
-            const client = window.supabase && config.url && config.anonKey
-                ? window.supabase.createClient(config.url, config.anonKey)
-                : null;
+            const storageKey = 'smrithipatha-video-selection';
             const mainVideo = document.getElementById('mainVideo');
             const nowTitle = document.getElementById('nowTitle');
             const syncStatus = document.getElementById('syncStatus');
             const playButtons = Array.from(document.querySelectorAll('[data-play-video]'));
             const videoSections = Array.from(document.querySelectorAll('[data-video-id]'));
-            const clientId = window.crypto?.randomUUID
-                ? window.crypto.randomUUID()
-                : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-            let lastSelectionActionId = null;
 
             function setStatus(icon, text) {
                 syncStatus.innerHTML = `<i class="fas ${icon}"></i> ${text}`;
@@ -444,7 +438,9 @@
                 mainVideo.pause();
                 mainVideo.removeAttribute('src');
                 mainVideo.load();
-                nowTitle.textContent = 'Video';
+                if (nowTitle) {
+                    nowTitle.querySelector('strong').textContent = 'Select a video';
+                }
                 setActiveSection('');
                 playButtons.forEach((button) => {
                     button.disabled = false;
@@ -452,53 +448,29 @@
                 });
             }
 
-            async function loadState() {
-                if (!client) return null;
-                const { data, error } = await client
-                    .from('wheel_state')
-                    .select('data')
-                    .eq('id', 'main')
-                    .maybeSingle();
-                if (error) {
-                    console.warn('Video state load failed:', error.message);
+            function saveSelection(videoId) {
+                try {
+                    localStorage.setItem(storageKey, JSON.stringify({ videoId, updatedAt: Date.now() }));
+                } catch (error) {
+                    console.warn('Could not save video selection:', error);
+                }
+            }
+
+            function loadSelection() {
+                try {
+                    const raw = localStorage.getItem(storageKey);
+                    if (!raw) return null;
+                    return JSON.parse(raw);
+                } catch (error) {
+                    console.warn('Could not load video selection:', error);
                     return null;
                 }
-                return data?.data || null;
             }
 
-            async function saveVideoSelection(videoId, actionId) {
-                if (!client) return;
-                const currentState = await loadState();
-                const nextData = {
-                    ...(currentState || {}),
-                    videoPlayback: {
-                        status: 'selected',
-                        videoId,
-                        actionId,
-                        updatedAt: Date.now()
-                    },
-                    lastAction: {
-                        id: actionId,
-                        type: 'video-selected',
-                        source: clientId,
-                        at: Date.now(),
-                        details: { videoId }
-                    }
-                };
-                const { error } = await client.from('wheel_state').upsert({
-                    id: 'main',
-                    updated_at: new Date().toISOString(),
-                    data: nextData
-                }, { onConflict: 'id' });
-                if (error) throw error;
-            }
+            function showSelectedVideo(videoId) {
+                const item = getVideoItem(videoId);
+                if (!item) return;
 
-            function showSelectedVideo(selection) {
-                const item = getVideoItem(selection?.videoId);
-                if (!item || selection.status !== 'selected') return;
-                if (lastSelectionActionId === selection.actionId) return;
-
-                lastSelectionActionId = selection.actionId || `${selection.videoId}-${Date.now()}`;
                 playButtons.forEach((button) => {
                     const isSelected = button.dataset.playVideo === item.id;
                     button.disabled = false;
@@ -507,50 +479,31 @@
                         : '<i class="fas fa-play"></i> Play';
                 });
 
-                mainVideo.pause();
-                if (!mainVideo.src.endsWith(encodeURI(item.src))) {
+                if (mainVideo.getAttribute('src') !== item.src) {
                     mainVideo.src = item.src;
                     mainVideo.load();
                 }
+
                 mainVideo.muted = false;
                 mainVideo.volume = 1;
                 mainVideo.currentTime = 0;
-                nowTitle.textContent = item.title;
+                mainVideo.pause();
+                if (nowTitle) {
+                    nowTitle.querySelector('strong').textContent = item.title;
+                }
                 setActiveSection(item.id);
                 document.body.classList.add('has-selection');
-                setStatus('fa-circle-check', 'Video Ready');
+                setStatus('fa-circle-check', 'Paused');
+                saveSelection(item.id);
             }
 
-            function applyState(state) {
-                const playback = state?.videoPlayback;
-                if (playback?.status === 'selected' && playback.videoId) {
-                    showSelectedVideo(playback);
-                    return;
-                }
-                setWaiting();
-                setStatus(client ? 'fa-circle-check' : 'fa-link-slash', client ? 'Waiting Live' : 'Offline');
-            }
-
-            async function handlePlayClick(event) {
+            function handlePlayClick(event) {
                 const videoId = event.currentTarget.dataset.playVideo;
-                const item = getVideoItem(videoId);
-                if (!item) return;
-
-                const actionId = `${clientId}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-                event.currentTarget.disabled = true;
-
-                if (client) {
-                    try {
-                        await saveVideoSelection(videoId, actionId);
-                    } catch (error) {
-                        console.warn('Video selection sync failed:', error);
-                    }
-                }
-
-                showSelectedVideo({ status: 'selected', videoId, actionId });
+                if (!videoId) return;
+                showSelectedVideo(videoId);
             }
 
-            async function init() {
+            function init() {
                 playButtons.forEach((button) => {
                     button.addEventListener('click', handlePlayClick);
                 });
@@ -559,31 +512,13 @@
                     setStatus('fa-circle-check', 'Finished');
                 });
 
-                if (!client) {
-                    setStatus('fa-link-slash', 'Offline');
+                const savedSelection = loadSelection();
+                if (savedSelection?.videoId) {
+                    showSelectedVideo(savedSelection.videoId);
+                } else {
                     setWaiting();
-                    return;
+                    setStatus('fa-play-circle', 'Ready');
                 }
-
-                setWaiting();
-                setStatus('fa-circle-check', 'Waiting Live');
-                client
-                    .channel('video-playback-live')
-                    .on(
-                        'postgres_changes',
-                        {
-                            event: '*',
-                            schema: 'public',
-                            table: 'wheel_state',
-                            filter: 'id=eq.main'
-                        },
-                        (payload) => applyState(payload.new?.data || null)
-                    )
-                    .subscribe((status) => {
-                        if (status === 'SUBSCRIBED') {
-                            setStatus('fa-circle-check', 'Waiting Live');
-                        }
-                    });
             }
 
             init();
