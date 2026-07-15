@@ -332,7 +332,7 @@
         </header>
 
         <section class="stage" aria-label="Selected video screen">
-            <video class="main-video" id="mainVideo" muted playsinline controls preload="metadata"></video>
+            <video class="main-video" id="mainVideo" playsinline controls preload="metadata"></video>
             <div class="stage-empty" id="stageEmpty">
                 <div>
                     <i class="fas fa-circle-play"></i>
@@ -340,10 +340,7 @@
                     <span>Use any Play button below. Only that selected video will appear here on the big screen.</span>
                 </div>
             </div>
-            <div class="now-playing" id="nowPlaying">
-                <span>Now Playing</span>
-                <strong id="nowTitle">Video</strong>
-            </div>
+            
         </section>
 
         <section class="section-grid" id="videoList" aria-label="Video choices">
@@ -426,7 +423,7 @@
             const clientId = window.crypto?.randomUUID
                 ? window.crypto.randomUUID()
                 : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-            let lastPlaybackActionId = null;
+            let lastSelectionActionId = null;
 
             function setStatus(icon, text) {
                 syncStatus.innerHTML = `<i class="fas ${icon}"></i> ${text}`;
@@ -469,24 +466,23 @@
                 return data?.data || null;
             }
 
-            async function savePlaybackState(videoId, startedAt, actionId) {
+            async function saveVideoSelection(videoId, actionId) {
                 if (!client) return;
                 const currentState = await loadState();
                 const nextData = {
                     ...(currentState || {}),
                     videoPlayback: {
-                        status: 'playing',
+                        status: 'selected',
                         videoId,
-                        startedAt,
                         actionId,
                         updatedAt: Date.now()
                     },
                     lastAction: {
                         id: actionId,
-                        type: 'video-played',
+                        type: 'video-selected',
                         source: clientId,
                         at: Date.now(),
-                        details: { videoId, startedAt }
+                        details: { videoId }
                     }
                 };
                 const { error } = await client.from('wheel_state').upsert({
@@ -497,26 +493,17 @@
                 if (error) throw error;
             }
 
-            function syncVideoTime(startedAt) {
-                const elapsed = Math.max(0, (Date.now() - Number(startedAt || Date.now())) / 1000);
-                if (Number.isFinite(mainVideo.duration) && mainVideo.duration > 0) {
-                    mainVideo.currentTime = Math.min(elapsed, Math.max(0, mainVideo.duration - 0.15));
-                } else {
-                    mainVideo.currentTime = elapsed;
-                }
-            }
+            function showSelectedVideo(selection) {
+                const item = getVideoItem(selection?.videoId);
+                if (!item || selection.status !== 'selected') return;
+                if (lastSelectionActionId === selection.actionId) return;
 
-            async function playSelected(playback) {
-                const item = getVideoItem(playback?.videoId);
-                if (!item || playback.status !== 'playing' || !playback.startedAt) return;
-                if (lastPlaybackActionId === playback.actionId) return;
-
-                lastPlaybackActionId = playback.actionId || `${playback.videoId}-${playback.startedAt}`;
+                lastSelectionActionId = selection.actionId || `${selection.videoId}-${Date.now()}`;
                 playButtons.forEach((button) => {
                     const isSelected = button.dataset.playVideo === item.id;
-                    button.disabled = true;
+                    button.disabled = false;
                     button.innerHTML = isSelected
-                        ? '<i class="fas fa-circle-notch fa-spin"></i> Starting'
+                        ? '<i class="fas fa-check"></i> Selected'
                         : '<i class="fas fa-play"></i> Play';
                 });
 
@@ -525,33 +512,19 @@
                     mainVideo.src = item.src;
                     mainVideo.load();
                 }
-                mainVideo.muted = true;
+                mainVideo.muted = false;
+                mainVideo.volume = 1;
+                mainVideo.currentTime = 0;
                 nowTitle.textContent = item.title;
                 setActiveSection(item.id);
-
-                const delay = Math.max(0, Number(playback.startedAt) - Date.now());
-                window.setTimeout(async () => {
-                    document.body.classList.add('has-selection');
-                    syncVideoTime(playback.startedAt);
-                    try {
-                        await mainVideo.play();
-                    } catch (error) {
-                        console.warn('Video play blocked:', error);
-                    }
-                    playButtons.forEach((button) => {
-                        button.disabled = false;
-                        button.innerHTML = button.dataset.playVideo === item.id
-                            ? '<i class="fas fa-rotate-right"></i> Replay'
-                            : '<i class="fas fa-play"></i> Play';
-                    });
-                    setStatus('fa-circle-check', 'Playing Live');
-                }, delay);
+                document.body.classList.add('has-selection');
+                setStatus('fa-circle-check', 'Video Ready');
             }
 
             function applyState(state) {
                 const playback = state?.videoPlayback;
-                if (playback?.status === 'playing' && playback.videoId) {
-                    playSelected(playback);
+                if (playback?.status === 'selected' && playback.videoId) {
+                    showSelectedVideo(playback);
                     return;
                 }
                 setWaiting();
@@ -564,18 +537,17 @@
                 if (!item) return;
 
                 const actionId = `${clientId}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-                const startedAt = Date.now() + 700;
                 event.currentTarget.disabled = true;
 
                 if (client) {
                     try {
-                        await savePlaybackState(videoId, startedAt, actionId);
+                        await saveVideoSelection(videoId, actionId);
                     } catch (error) {
-                        console.warn('Video playback sync failed:', error);
+                        console.warn('Video selection sync failed:', error);
                     }
                 }
 
-                playSelected({ status: 'playing', videoId, startedAt, actionId });
+                showSelectedVideo({ status: 'selected', videoId, actionId });
             }
 
             async function init() {
@@ -593,7 +565,8 @@
                     return;
                 }
 
-                applyState(await loadState());
+                setWaiting();
+                setStatus('fa-circle-check', 'Waiting Live');
                 client
                     .channel('video-playback-live')
                     .on(
